@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IncidentTriageCompletedV1",
+  "description": "Kafka event published by Python AI Triage engine containing structured investigation findings",
+  "type": "object",
+  "required": [
+    "incidentId",
+    "triageId",
+    "investigationDurationMs",
+    "observations",
+    "supportingEvidence",
+    "potentialRootCauses",
+    "suggestedRemediations",
+    "runbookCitations",
+    "confidenceScore",
+    "completedAt"
+  ],
+  "properties": {
+    "incidentId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "triageId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "investigationDurationMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "observations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Validated, factual observations from logs, metrics, and deployments"
+    },
+    "supportingEvidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "evidenceType", "description"],
+        "properties": {
+          "source": { "type": "string" },
+          "evidenceType": { "type": "string", "enum": ["METRIC", "LOG", "DEPLOYMENT", "HEALTH_CHECK", "RUNBOOK"] },
+          "description": { "type": "string" },
+          "timestamp": { "type": "string" },
+          "metricValue": { "type": "number" },
+          "threshold": { "type": "number" }
+        }
+      }
+    },
+    "potentialRootCauses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["hypothesis", "likelihood", "reasoning"],
+        "properties": {
+          "hypothesis": { "type": "string" },
+          "likelihood": { "type": "string", "enum": ["HIGH", "MEDIUM", "LOW"] },
+          "reasoning": { "type": "string" }
+        }
+      }
+    },
+    "suggestedRemediations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["actionTitle", "actionDescription", "riskLevel", "requiresApproval"],
+        "properties": {
+          "actionTitle": { "type": "string" },
+          "actionDescription": { "type": "string" },
+          "riskLevel": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH"] },
+          "requiresApproval": { "type": "boolean", "const": true }
+        }
+      }
+    },
+    "runbookCitations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["documentId", "title", "chunkId", "relevanceScore"],
+        "properties": {
+          "documentId": { "type": "string" },
+          "title": { "type": "string" },
+          "chunkId": { "type": "string" },
+          "section": { "type": "string" },
+          "snippet": { "type": "string" },
+          "relevanceScore": { "type": "number" }
+        }
+      }
+    },
+    "confidenceScore": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "uncertainties": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "additionalInvestigationSteps": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "completedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IncidentTriageDlqV1",
+  "description": "Dead Letter Queue event for failed triage requests or poison messages",
+  "type": "object",
+  "required": [
+    "originalEventId",
+    "originalTopic",
+    "failedAt",
+    "failureReason",
+    "retryCount",
+    "exceptionClass",
+    "exceptionMessage",
+    "rawPayload"
+  ],
+  "properties": {
+    "originalEventId": {
+      "type": "string"
+    },
+    "originalTopic": {
+      "type": "string"
+    },
+    "failedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "failureReason": {
+      "type": "string"
+    },
+    "retryCount": {
+      "type": "integer"
+    },
+    "exceptionClass": {
+      "type": "string"
+    },
+    "exceptionMessage": {
+      "type": "string"
+    },
+    "stackTraceSnippet": {
+      "type": "string"
+    },
+    "rawPayload": {
+      "type": "string"
+    }
+  }
+}

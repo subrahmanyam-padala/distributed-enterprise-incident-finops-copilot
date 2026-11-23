@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpsPilotCommonEnvelopeV1",
+  "description": "Standard distributed event envelope for OpsPilot Kafka events with correlation and tracing context",
+  "type": "object",
+  "required": [
+    "eventId",
+    "eventType",
+    "schemaVersion",
+    "tenantId",
+    "timestamp",
+    "correlationId",
+    "payload"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Globally unique event identifier (UUID v4)"
+    },
+    "eventType": {
+      "type": "string",
+      "description": "Domain event type identifier (e.g. incident.alert.received.v1)"
+    },
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of the event schema (e.g. 1.0.0)"
+    },
+    "tenantId": {
+      "type": "string",
+      "description": "Tenant/Organization identifier for multi-tenant isolation"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp when the event occurred"
+    },
+    "correlationId": {
+      "type": "string",
+      "description": "Cross-service correlation ID propagated throughout the request lifecycle"
+    },
+    "traceContext": {
+      "type": "object",
+      "description": "W3C Trace Context headers for OpenTelemetry distributed tracing",
+      "properties": {
+        "traceParent": {
+          "type": "string",
+          "description": "W3C traceparent (version-traceid-parentid-traceflags)"
+        },
+        "traceState": {
+          "type": "string",
+          "description": "W3C tracestate vendor-specific state"
+        }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "description": "Domain-specific event data payload"
+    }
+  }
+}

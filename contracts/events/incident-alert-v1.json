@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IncidentAlertV1",
+  "description": "Payload schema for ingested operational alerts received by OpsPilot",
+  "type": "object",
+  "required": [
+    "alertId",
+    "source",
+    "serviceName",
+    "severity",
+    "message",
+    "environment",
+    "timestamp",
+    "fingerprint"
+  ],
+  "properties": {
+    "alertId": {
+      "type": "string",
+      "description": "Unique identifier of the alert from the source monitoring system"
+    },
+    "source": {
+      "type": "string",
+      "description": "Monitoring source (e.g., Prometheus, Datadog, CloudWatch, PagerDuty)"
+    },
+    "serviceName": {
+      "type": "string",
+      "description": "Affected microservice or infrastructure component"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
+    },
+    "message": {
+      "type": "string",
+      "maxLength": 2048,
+      "description": "Sanitized alert message or summary"
+    },
+    "environment": {
+      "type": "string",
+      "enum": ["production", "staging", "development", "qa"]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fingerprint": {
+      "type": "string",
+      "description": "Deterministic hash for alert deduplication and grouping"
+    },
+    "labels": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Key-value tags from monitoring source"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Redacted, sanitized supplementary attributes"
+    }
+  }
+}

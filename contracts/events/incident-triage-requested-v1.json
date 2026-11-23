@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IncidentTriageRequestedV1",
+  "description": "Kafka event published by Spring Boot control plane requesting AI investigation",
+  "type": "object",
+  "required": [
+    "incidentId",
+    "title",
+    "severity",
+    "serviceName",
+    "environment",
+    "status",
+    "alertCount",
+    "initialAlertSummary"
+  ],
+  "properties": {
+    "incidentId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "title": {
+      "type": "string"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
+    },
+    "serviceName": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["OPEN", "INVESTIGATING", "IDENTIFIED", "MONITORING", "RESOLVED"]
+    },
+    "alertCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "initialAlertSummary": {
+      "type": "string"
+    },
+    "fingerprints": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "recentAlerts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "alertId": { "type": "string" },
+          "source": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "message": { "type": "string" }
+        }
+      }
+    }
+  }
+}
