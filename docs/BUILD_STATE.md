@@ -3,7 +3,7 @@
 ## Current Status Summary
 
 - **Current Milestone**: Milestone 0 — Workspace Inspection & Architecture Planning
-- **Status**: Completed (Awaiting user review & push)
+- **Status**: Completed (Initial commit `3f052b4` on branch `main`)
 - **Next Milestone**: Milestone 1 — Local Infrastructure & Service Skeletons
 - **Last Verified Date**: 2026-11-23
 
