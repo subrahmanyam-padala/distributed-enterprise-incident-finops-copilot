@@ -1,0 +1,53 @@
+# OpsPilot AI Triage Engine
+# Python 3.11+ FastAPI service with LangGraph workflow orchestration
+
+[tool.poetry]
+name = "opspilot-ai-triage"
+version = "0.1.0"
+description = "OpsPilot AI Triage Engine: LangGraph-powered incident investigation with Hybrid RAG"
+authors = ["OpsPilot Engineering <subbhu35@gmail.com>"]
+readme = "README.md"
+packages = [{include = "app"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.115.5"
+uvicorn = {extras = ["standard"], version = "^0.32.1"}
+pydantic = "^2.10.3"
+pydantic-settings = "^2.6.1"
+
+# Kafka
+aiokafka = "^0.11.0"
+
+# LangGraph and LLM
+langgraph = "^0.2.57"
+langchain = "^0.3.9"
+langchain-core = "^0.3.21"
+langchain-community = "^0.3.9"
+
+# Database
+asyncpg = "^0.30.0"
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.36"}
+pgvector = "^0.3.6"
+
+# Observability
+opentelemetry-api = "^1.29.0"
+opentelemetry-sdk = "^1.29.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+pytest-asyncio = "^0.24.0"
+httpx = "^0.28.0"
+pytest-cov = "^6.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

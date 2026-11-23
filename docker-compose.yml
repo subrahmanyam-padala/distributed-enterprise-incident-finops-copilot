@@ -1,0 +1,130 @@
+# ==============================================================================
+# OpsPilot - Docker Compose Local Development Infrastructure
+# Services: PostgreSQL 16 + pgvector, Kafka KRaft, Redis 7
+# ==============================================================================
+
+services:
+
+  # ============================================================================
+  # PostgreSQL 16 with pgvector extension
+  # ============================================================================
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: opspilot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-opspilot}
+      POSTGRES_USER: ${POSTGRES_USER:-opspilot_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opspilot_secret_change_in_prod}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-opspilot_user} -d ${POSTGRES_DB:-opspilot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - opspilot-network
+
+  # ============================================================================
+  # Apache Kafka in KRaft mode (no Zookeeper)
+  # Using Bitnami Kafka image which supports KRaft natively
+  # ============================================================================
+  kafka:
+    image: bitnami/kafka:3.7.0
+    container_name: opspilot-kafka
+    restart: unless-stopped
+    environment:
+      # KRaft mode configuration
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_KRAFT_CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qg=="
+      # Topic defaults
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_CFG_NUM_PARTITIONS: 3
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_CFG_LOG_RETENTION_HOURS: 168
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/bitnami/kafka
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - opspilot-network
+
+  # ============================================================================
+  # Kafka Topic Initializer (one-shot job to create required topics)
+  # ============================================================================
+  kafka-init:
+    image: bitnami/kafka:3.7.0
+    container_name: opspilot-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: >
+      bash -c "
+        echo 'Creating OpsPilot Kafka topics...' &&
+        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic incident.alerts.v1 --partitions 3 --replication-factor 1 &&
+        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic incident.triage.requested.v1 --partitions 3 --replication-factor 1 &&
+        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic incident.triage.completed.v1 --partitions 3 --replication-factor 1 &&
+        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic incident.triage.dlq.v1 --partitions 1 --replication-factor 1 &&
+        echo 'All Kafka topics created successfully.' &&
+        kafka-topics.sh --bootstrap-server kafka:9092 --list
+      "
+    networks:
+      - opspilot-network
+    restart: "no"
+
+  # ============================================================================
+  # Redis 7 (optional in early development, required for reliability phase)
+  # ============================================================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: opspilot-redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - opspilot-network
+
+# ==============================================================================
+# Volumes
+# ==============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  kafka_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# ==============================================================================
+# Networks
+# ==============================================================================
+networks:
+  opspilot-network:
+    driver: bridge
+    name: opspilot-network

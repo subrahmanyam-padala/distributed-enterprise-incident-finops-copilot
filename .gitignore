@@ -80,6 +80,7 @@ lerna-debug.log*
 dist/
 dist-ssr/
 *.local
+*.tsbuildinfo
 
 # IDEs and Editors
 .idea/
