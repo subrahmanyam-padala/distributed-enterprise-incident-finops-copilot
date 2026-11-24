@@ -14,15 +14,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.health import router as health_router
 from app.config import settings
+from app.events.consumer import KafkaConsumerWorker
+
+kafka_worker = KafkaConsumerWorker()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifespan events (startup and shutdown)."""
     print(f"[OpsPilot AI Triage] Starting up — environment: {settings.app_env}")
-    # Kafka consumer startup will be added in Milestone 3
+    await kafka_worker.start()
     yield
     print("[OpsPilot AI Triage] Shutting down gracefully...")
+    await kafka_worker.stop()
 
 
 app = FastAPI(

@@ -18,3 +18,8 @@ opspilot:
   jwt:
     secret: test_secret_key_at_least_256_bits_long_for_hmac_sha256_algorithm_testing_only
     expiration-ms: 3600000
+  outbox:
+    enabled: false
+  kafka:
+    consumer:
+      enabled: false

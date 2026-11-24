@@ -88,4 +88,15 @@ public class IncidentController {
         IncidentResponse response = incidentService.resolveIncident(id, request);
         return ResponseEntity.ok(ApiResponse.ok("Incident resolved successfully", response));
     }
+
+    @GetMapping("/{id}/triage")
+    @Operation(summary = "Get AI triage reports for an incident (tenant isolated)")
+    public ResponseEntity<ApiResponse<List<com.opspilot.controlplane.dto.triage.TriageReportResponse>>> getIncidentTriageReports(
+            @PathVariable UUID id
+    ) {
+        // Enforce incident tenant access
+        incidentService.getIncidentById(id);
+        List<com.opspilot.controlplane.dto.triage.TriageReportResponse> reports = incidentService.getTriageReportsForIncident(id);
+        return ResponseEntity.ok(ApiResponse.ok(reports));
+    }
 }

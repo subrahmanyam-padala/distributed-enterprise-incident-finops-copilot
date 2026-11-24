@@ -32,6 +32,7 @@ public class IncidentService {
 
     private final IncidentRepository incidentRepository;
     private final AlertRepository alertRepository;
+    private final com.opspilot.controlplane.repository.TriageReportRepository triageReportRepository;
     private final AuditLogService auditLogService;
 
     @Transactional(readOnly = true)
@@ -76,6 +77,31 @@ public class IncidentService {
 
         return alertRepository.findByIncidentIdOrderByReceivedAtDesc(incidentId).stream()
                 .map(this::mapToAlertResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<com.opspilot.controlplane.dto.triage.TriageReportResponse> getTriageReportsForIncident(UUID incidentId) {
+        // Enforce incident tenant access first
+        getIncidentById(incidentId);
+
+        return triageReportRepository.findByIncidentIdOrderByCreatedAtDesc(incidentId).stream()
+                .map(tr -> com.opspilot.controlplane.dto.triage.TriageReportResponse.builder()
+                        .id(tr.getId())
+                        .incidentId(tr.getIncidentId())
+                        .organizationId(tr.getOrganizationId())
+                        .triageId(tr.getTriageId())
+                        .confidenceScore(tr.getConfidenceScore())
+                        .investigationDurationMs(tr.getInvestigationDurationMs())
+                        .observations(tr.getObservations())
+                        .supportingEvidence(tr.getSupportingEvidence())
+                        .potentialRootCauses(tr.getPotentialRootCauses())
+                        .suggestedRemediations(tr.getSuggestedRemediations())
+                        .runbookCitations(tr.getRunbookCitations())
+                        .uncertainties(tr.getUncertainties())
+                        .additionalSteps(tr.getAdditionalSteps())
+                        .createdAt(tr.getCreatedAt())
+                        .build())
                 .toList();
     }
 
