@@ -16,6 +16,8 @@ import com.opspilot.controlplane.repository.IncidentRepository;
 import com.opspilot.controlplane.security.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -53,6 +55,7 @@ public class IncidentService {
                 .build();
     }
 
+    @Cacheable(value = "incident-detail", key = "#incidentId", unless = "#result == null")
     @Transactional(readOnly = true)
     public IncidentResponse getIncidentById(UUID incidentId) {
         UUID organizationId = requireCurrentOrgId();
@@ -80,6 +83,7 @@ public class IncidentService {
                 .toList();
     }
 
+    @Cacheable(value = "triage-reports", key = "#incidentId", unless = "#result == null || #result.isEmpty()")
     @Transactional(readOnly = true)
     public List<com.opspilot.controlplane.dto.triage.TriageReportResponse> getTriageReportsForIncident(UUID incidentId) {
         // Enforce incident tenant access first
@@ -105,6 +109,7 @@ public class IncidentService {
                 .toList();
     }
 
+    @CacheEvict(value = {"incident-detail", "incidents"}, allEntries = true)
     @Transactional
     public IncidentResponse acknowledgeIncident(UUID incidentId, IncidentAcknowledgeRequest request) {
         UUID organizationId = requireCurrentOrgId();
@@ -140,6 +145,7 @@ public class IncidentService {
         return mapToIncidentResponse(incident);
     }
 
+    @CacheEvict(value = {"incident-detail", "incidents"}, allEntries = true)
     @Transactional
     public IncidentResponse updateStatus(UUID incidentId, IncidentStatusUpdateRequest request) {
         UUID organizationId = requireCurrentOrgId();
@@ -172,6 +178,7 @@ public class IncidentService {
         return mapToIncidentResponse(incident);
     }
 
+    @CacheEvict(value = {"incident-detail", "incidents"}, allEntries = true)
     @Transactional
     public IncidentResponse resolveIncident(UUID incidentId, IncidentResolveRequest request) {
         UUID organizationId = requireCurrentOrgId();

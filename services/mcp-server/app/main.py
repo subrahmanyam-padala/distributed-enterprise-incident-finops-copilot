@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.health import router as health_router
 from app.api.tools import router as tools_router
 from app.config import settings
+from app.middleware.trace_correlation import TraceCorrelationMiddleware
 
 app = FastAPI(
     title="OpsPilot MCP Server",
@@ -27,6 +28,7 @@ app = FastAPI(
     docs_url="/docs",
 )
 
+app.add_middleware(TraceCorrelationMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # MCP server is internal only; restricted at network level

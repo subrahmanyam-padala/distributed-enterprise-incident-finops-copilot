@@ -13,6 +13,10 @@ spring:
     enabled: false
   kafka:
     bootstrap-servers: localhost:9092
+  data:
+    redis:
+      host: localhost
+      port: 6379
 
 opspilot:
   jwt:
@@ -23,3 +27,7 @@ opspilot:
   kafka:
     consumer:
       enabled: false
+  cache:
+    enabled: false
+  rate-limit:
+    enabled: false

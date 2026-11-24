@@ -53,6 +53,17 @@ spring:
       triage-completed: incident.triage.completed.v1
       triage-dlq: incident.triage.dlq.v1
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+
 server:
   port: ${CONTROL_PLANE_PORT:8080}
   servlet:
@@ -62,7 +73,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus,caches
   endpoint:
     health:
       show-details: when-authorized
@@ -70,6 +81,14 @@ management:
   health:
     defaults:
       enabled: true
+    redis:
+      enabled: true
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+    tags:
+      application: opspilot-control-plane
 
 opspilot:
   jwt:
@@ -81,3 +100,16 @@ opspilot:
   outbox:
     poll-interval-ms: 5000
     batch-size: 50
+  cache:
+    enabled: true
+  rate-limit:
+    enabled: true
+    max-requests: 100
+    window-seconds: 60
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId=%X{traceId:-}] [correlationId=%X{correlationId:-}] %-5level %logger{36} - %msg%n"
+  level:
+    com.opspilot: INFO
+    org.springframework.cache: DEBUG
