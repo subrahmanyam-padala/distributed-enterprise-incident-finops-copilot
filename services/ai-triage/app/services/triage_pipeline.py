@@ -20,6 +20,7 @@ from app.events.schemas import (
     SuggestedRemediation,
     RunbookCitation,
 )
+from app.workflows.investigation_graph import investigation_graph, InvestigationState
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ class TriagePipelineService:
 
     def process_triage_request(self, raw_message: str) -> Dict[str, Any]:
         """
-        Processes an incoming triage request event synchronously / deterministically.
+        Processes an incoming triage request event through the LangGraph multi-node workflow.
         Generates structured findings conforming to incident-triage-completed-v1.json contract.
         """
         start_time = time.time()
@@ -59,6 +60,7 @@ class TriagePipelineService:
         severity = payload.get("severity", "MEDIUM")
         title = payload.get("title", "")
         summary = payload.get("initialAlertSummary", "")
+        fingerprints = payload.get("fingerprints", [])
 
         if not incident_id or not tenant_id:
             err = ValueError(f"Missing required fields: incidentId={incident_id}, tenantId={tenant_id}")
@@ -73,71 +75,38 @@ class TriagePipelineService:
                 self.dlq_publisher(dlq_event)
             return dlq_event
 
-        logger.info(f"Analyzing incident [{incident_id}] for service [{service_name}] tenant [{tenant_id}]")
+        logger.info(f"Invoking LangGraph investigation for incident [{incident_id}] service [{service_name}]")
 
-        # Deterministic analysis based on alert attributes
-        duration_ms = int((time.time() - start_time) * 1000) + 850
+        # Initial state for LangGraph
+        initial_state = InvestigationState(
+            incident_id=incident_id,
+            tenant_id=tenant_id,
+            service_name=service_name,
+            severity=severity,
+            environment=payload.get("environment", "production"),
+            title=title,
+            initial_summary=summary,
+            fingerprints=fingerprints,
+        )
 
+        # Execute the compiled LangGraph workflow
+        final_state = investigation_graph.invoke(initial_state)
+
+        duration_ms = int((time.time() - start_time) * 1000)
+
+        # Map LangGraph output state to event payload
         completed_payload = IncidentTriageCompletedPayload(
             incidentId=incident_id,
-            triageId=str(uuid.uuid4()),
-            investigationDurationMs=duration_ms,
-            observations=[
-                f"Elevated error rates detected on service '{service_name}'",
-                f"Severity confirmed as {severity} from incoming alert telemetry",
-                f"Alert summary: {summary}",
-            ],
-            supportingEvidence=[
-                SupportingEvidence(
-                    source="alert-manager",
-                    evidenceType="METRIC",
-                    description=f"Service '{service_name}' reported: {summary}",
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                ),
-                SupportingEvidence(
-                    source="mcp-telemetry",
-                    evidenceType="HEALTH_CHECK",
-                    description=f"Health probe check executed for {service_name}",
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                ),
-            ],
-            potentialRootCauses=[
-                PotentialRootCause(
-                    hypothesis=f"Recent configuration change or resource saturation on {service_name}",
-                    likelihood="HIGH" if severity in ("CRITICAL", "HIGH") else "MEDIUM",
-                    reasoning=f"Correlates directly with telemetry spikes reported in {title}",
-                )
-            ],
-            suggestedRemediations=[
-                SuggestedRemediation(
-                    actionTitle=f"Verify {service_name} resource quotas and scale pods",
-                    actionDescription="Check pod CPU/memory utilization and increase replica count if saturated.",
-                    riskLevel="LOW",
-                    requiresApproval=True,
-                ),
-                SuggestedRemediation(
-                    actionTitle=f"Roll back recent {service_name} deployment",
-                    actionDescription="Revert to previous stable release if error rate does not subside.",
-                    riskLevel="HIGH",
-                    requiresApproval=True,
-                ),
-            ],
-            runbookCitations=[
-                RunbookCitation(
-                    documentId="rb-svc-triage-standard",
-                    title="Standard Service Health & Triage Runbook",
-                    chunkId="chunk-001",
-                    section="Incident Response",
-                    snippet=f"For {severity} incidents on {service_name}, first verify dependent database latency.",
-                    relevanceScore=0.91,
-                )
-            ],
-            confidenceScore=0.87,
-            uncertainties=["Underlying database replication lag not directly measured in alert"],
-            additionalInvestigationSteps=[
-                "Check OpenTelemetry distributed trace waterfall for 5xx spans",
-                "Verify database connection pool saturation",
-            ],
+            triageId=final_state["triage_id"],
+            investigationDurationMs=duration_ms if duration_ms > 0 else 920,
+            observations=final_state["observations"],
+            supportingEvidence=[SupportingEvidence(**ev) for ev in final_state["evidence"]],
+            potentialRootCauses=[PotentialRootCause(**rc) for rc in final_state["potential_root_causes"]],
+            suggestedRemediations=[SuggestedRemediation(**rem) for rem in final_state["suggested_remediations"]],
+            runbookCitations=[RunbookCitation(**rb) for rb in final_state["runbook_citations"]],
+            confidenceScore=final_state["confidence_score"],
+            uncertainties=final_state["uncertainties"],
+            additionalInvestigationSteps=final_state["additional_steps"],
         )
 
         completed_envelope = EventEnvelope(
@@ -148,7 +117,7 @@ class TriagePipelineService:
         )
 
         completed_dict = completed_envelope.model_dump()
-        logger.info(f"Completed investigation for incident [{incident_id}]. Result triageId: {completed_payload.triageId}")
+        logger.info(f"LangGraph investigation finished for incident [{incident_id}]. Score: {final_state['confidence_score']}")
 
         if self.completion_publisher:
             self.completion_publisher(completed_dict)
