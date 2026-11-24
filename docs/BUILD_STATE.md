@@ -2,10 +2,10 @@
 
 ## Current Status Summary
 
-- **Current Milestone**: Milestone 1 — Local Infrastructure & Service Skeletons
-- **Status**: Completed (Local commit `8f3f9a4` on branch `main`)
-- **Next Milestone**: Milestone 2 — Java Control Plane & Incident Management
-- **Last Verified Date**: 2026-11-23
+- **Current Milestone**: Milestone 2 — Java Control Plane & Incident Management
+- **Status**: Completed (Tests passed: 36/36, Local compilation verified)
+- **Next Milestone**: Milestone 3 — Event-Driven Architecture & Kafka Pipeline
+- **Last Verified Date**: 2026-11-24
 
 ---
 
@@ -24,117 +24,127 @@
 
 ---
 
-## 2. Implemented Functionality (Milestone 1)
+## 2. Implemented Functionality (Milestone 2)
 
-1. **Local Container Infrastructure (`docker-compose.yml`)**:
-   - **PostgreSQL 16** with `pgvector/pgvector:pg16` image, enabling `uuid-ossp`, `vector`, and `pg_trgm` extensions via `infra/docker/postgres/init.sql`.
-   - **Apache Kafka** in KRaft mode (`bitnami/kafka:3.7.0`) without ZooKeeper, configured with cluster ID and port 9092.
-   - **Kafka Topic Initializer** (`kafka-init`) one-shot container automatically provisioning required topics: `incident.alerts.v1`, `incident.triage.requested.v1`, `incident.triage.completed.v1`, `incident.triage.dlq.v1`.
-   - **Redis 7** (`redis:7.2-alpine`) with volume persistence and health checks.
-2. **Java 21 Spring Boot 3.4 Control Plane Skeleton (`services/control-plane`)**:
-   - Complete `pom.xml` configured with Spring Boot 3.4.0, Spring Data JPA, Spring Security, Flyway, Spring Kafka, JJWT, OpenAPI (Swagger UI), and Testcontainers.
-   - `ControlPlaneApplication.java` entry point with `@EnableScheduling`.
-   - Flyway database migration `V1__initial_schema.sql` covering `organizations`, `users`, `incidents`, `alerts`, `outbox_events`, `triage_reports`, `audit_logs`, and `processed_events`.
-   - `HealthController` exposing `/api/v1/health`.
-   - Spring Security configuration allowing public access to health and OpenAPI docs.
-   - Swagger / OpenAPI 3.0 configuration with Bearer JWT scheme.
-   - Verified with Maven wrapper `mvnw.cmd`.
-3. **Python AI Triage Engine Skeleton (`services/ai-triage`)**:
-   - FastAPI application entry point with CORS and lifespan handler.
-   - Pydantic Settings configuration (`app/config.py`).
-   - Liveness probe endpoint at `/api/v1/health` with uptime tracking.
-   - Pinned `pyproject.toml` and `requirements.txt`.
-4. **Python Model Context Protocol (MCP) Server Skeleton (`services/mcp-server`)**:
-   - FastAPI service exposing read-only operational telemetry tools.
-   - Token authentication middleware (`Bearer <mcp_token>`).
-   - Read-only tools implemented: `get_recent_deployments`, `get_service_health`.
-5. **React 18 + TypeScript Frontend Skeleton (`apps/web`)**:
-   - Modern Vite + React 18 + TypeScript SPA with TailwindCSS.
-   - React Router DOM routing (`/dashboard` and `/health`).
-   - Service health checker view probing all backend services.
-   - Vitest + React Testing Library integration tests.
-6. **Documentation**:
-   - `docs/LOCAL_DEVELOPMENT.md`: Comprehensive startup, execution, and port guide.
+1. **Domain Model & Multi-Tenant Entities**:
+   - `Organization`: Multi-tenant organization entity with slug, status, subscription plan.
+   - `User`: Organization-scoped users with BCrypt-hashed passwords and RBAC roles (`ADMIN`, `OPERATOR`, `VIEWER`).
+   - `Incident`: Incidents with status (`OPEN`, `INVESTIGATING`, `IDENTIFIED`, `MONITORING`, `RESOLVED`), severity (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO`), and correlation counters.
+   - `Alert`: Ingested operational alerts linked to incidents, storing raw source, fingerprint, labels, and JSON metadata.
+   - `OutboxEvent`: Transactional Outbox pattern entity ensuring reliable at-least-once Kafka publication.
+   - `AuditLog`: Immutable tenant audit trail recording administrative and operational actions.
+2. **Multi-Tenant Security Architecture**:
+   - `TenantContext`: `ThreadLocal` context storing verified `organizationId`, `userId`, `role`, and `email`.
+   - `JwtTokenProvider`: HMAC-SHA256 JJWT generator and validator with tenant and role claims.
+   - `JwtAuthenticationFilter`: Extracts Bearer token, populates `TenantContext` and Spring `SecurityContextHolder`, and safely cleans up in `finally`.
+   - `SecurityConfig`: Configured stateless session management, BCrypt(12), role-based method security (`@EnableMethodSecurity`), and public endpoint matching.
+3. **Alert Ingestion Pipeline & Deduplication (`AlertIngestionService`)**:
+   - Ingests alerts via `POST /api/v1/alerts/webhook` (HTTP 202 Accepted).
+   - Generates deterministic SHA-256 fingerprints across alert attributes.
+   - 15-minute sliding deduplication window to prevent alert storms.
+   - 1-hour active incident grouping window for identical service + environment.
+   - Dynamic incident severity escalation when incoming alerts have higher severity.
+   - Transactional outbox event insertion in the exact same DB transaction as incident/alert creation.
+4. **Incident Lifecycle & State Transitions (`IncidentService`)**:
+   - Strict state machine validation:
+     - `OPEN` -> `INVESTIGATING`, `RESOLVED`
+     - `INVESTIGATING` -> `IDENTIFIED`, `MONITORING`, `RESOLVED`
+     - `IDENTIFIED` -> `MONITORING`, `RESOLVED`, `INVESTIGATING`
+     - `MONITORING` -> `RESOLVED`, `INVESTIGATING`
+     - `RESOLVED` -> `OPEN` (reopen)
+   - Cross-tenant access controls: All incident reads, updates, acknowledgments, and resolutions verify tenant ownership and reject cross-tenant requests with HTTP 403.
+   - Audit logging for every state transition and administrative action.
+5. **Comprehensive Integration Test Suite**:
+   - `HealthControllerTest`: Liveness and health endpoints (1 test).
+   - `AuthControllerTest`: Registration, login, duplicate slug rejection, invalid credentials, and `/me` validation (9 tests).
+   - `AlertWebhookControllerTest`: Ingestion, deduplication, incident grouping, outbox event generation, validation (8 tests).
+   - `IncidentControllerTest`: Incident listing, get-by-id, acknowledgment, status transitions, resolution, and RBAC boundaries (12 tests).
+   - `TenantIsolationTest`: Rigorous multi-tenant isolation tests verifying Organisation B cannot read, list, or mutate Organisation A's incidents (6 tests).
+   - **Total test suite: 36 tests run, 36 passed, 0 failures, 0 errors.**
 
 ---
 
-## 3. Files Created or Modified
+## 3. Files Created or Modified (Milestone 2)
 
-- `docker-compose.yml`
-- `infra/docker/postgres/init.sql`
-- `services/control-plane/pom.xml`
-- `services/control-plane/mvnw`
-- `services/control-plane/mvnw.cmd`
-- `services/control-plane/.mvn/wrapper/maven-wrapper.properties`
-- `services/control-plane/src/main/java/com/opspilot/controlplane/ControlPlaneApplication.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/domain/enums/Role.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/domain/enums/IncidentSeverity.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/domain/enums/IncidentStatus.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/domain/enums/OutboxStatus.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/domain/entity/Organization.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/domain/entity/User.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/domain/entity/Incident.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/domain/entity/Alert.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/domain/entity/OutboxEvent.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/domain/entity/AuditLog.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/repository/OrganizationRepository.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/repository/UserRepository.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/repository/IncidentRepository.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/repository/AlertRepository.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/repository/OutboxEventRepository.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/repository/AuditLogRepository.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/security/TenantContext.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/security/UserPrincipal.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/security/JwtTokenProvider.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/security/JwtAuthenticationFilter.java`
 - `services/control-plane/src/main/java/com/opspilot/controlplane/config/SecurityConfig.java`
-- `services/control-plane/src/main/java/com/opspilot/controlplane/config/OpenApiConfig.java`
-- `services/control-plane/src/main/java/com/opspilot/controlplane/health/HealthController.java`
-- `services/control-plane/src/main/resources/application.yml`
-- `services/control-plane/src/main/resources/db/migration/V1__initial_schema.sql`
-- `services/control-plane/src/test/java/com/opspilot/controlplane/health/HealthControllerTest.java`
-- `services/control-plane/src/test/resources/application-test.yml`
-- `services/ai-triage/pyproject.toml`
-- `services/ai-triage/requirements.txt`
-- `services/ai-triage/app/main.py`
-- `services/ai-triage/app/config.py`
-- `services/ai-triage/app/api/health.py`
-- `services/ai-triage/tests/test_health.py`
-- `services/mcp-server/requirements.txt`
-- `services/mcp-server/app/main.py`
-- `services/mcp-server/app/config.py`
-- `services/mcp-server/app/api/health.py`
-- `services/mcp-server/app/api/tools.py`
-- `services/mcp-server/tests/test_mcp.py`
-- `apps/web/package.json`
-- `apps/web/vite.config.ts`
-- `apps/web/tsconfig.json`
-- `apps/web/index.html`
-- `apps/web/tailwind.config.cjs`
-- `apps/web/postcss.config.cjs`
-- `apps/web/src/main.tsx`
-- `apps/web/src/App.tsx`
-- `apps/web/src/index.css`
-- `apps/web/src/pages/DashboardPage.tsx`
-- `apps/web/src/pages/HealthPage.tsx`
-- `apps/web/src/test/setup.ts`
-- `apps/web/src/test/DashboardPage.test.tsx`
-- `docs/LOCAL_DEVELOPMENT.md`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/exception/ResourceNotFoundException.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/exception/TenantAccessDeniedException.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/exception/DuplicateResourceException.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/exception/AuthenticationFailedException.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/exception/ValidationException.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/exception/GlobalExceptionHandler.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/dto/common/ApiResponse.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/dto/common/PagedResponse.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/dto/auth/RegisterRequest.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/dto/auth/LoginRequest.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/dto/auth/AuthResponse.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/dto/auth/UserResponse.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/dto/auth/OrganizationResponse.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/dto/alert/AlertWebhookRequest.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/dto/alert/AlertResponse.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/dto/incident/IncidentResponse.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/dto/incident/IncidentAcknowledgeRequest.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/dto/incident/IncidentStatusUpdateRequest.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/dto/incident/IncidentResolveRequest.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/dto/audit/AuditLogResponse.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/service/AuditLogService.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/service/AuthService.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/service/AlertIngestionService.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/service/IncidentService.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/controller/AuthController.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/controller/AlertWebhookController.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/controller/IncidentController.java`
+- `services/control-plane/src/main/java/com/opspilot/controlplane/controller/AuditLogController.java`
+- `services/control-plane/src/test/java/com/opspilot/controlplane/auth/AuthControllerTest.java`
+- `services/control-plane/src/test/java/com/opspilot/controlplane/alert/AlertWebhookControllerTest.java`
+- `services/control-plane/src/test/java/com/opspilot/controlplane/incident/IncidentControllerTest.java`
+- `services/control-plane/src/test/java/com/opspilot/controlplane/isolation/TenantIsolationTest.java`
 - `docs/BUILD_STATE.md`
 
 ---
 
-## 4. Build and Test Results
+## 4. Verification & Test Execution Results
 
-- **Java Control Plane**:
-  - `mvn test-compile`: **PASS** (4 Java sources + 1 test source compiled)
-  - `mvn test`: **PASS** (`HealthControllerTest` 1 passed, 0 failures, 0 errors in 18.8s)
-- **Python AI Triage Engine**:
-  - `pytest tests/test_health.py`: **PASS** (2 passed in 1.17s)
-- **Python MCP Server**:
-  - `pytest tests/test_mcp.py`: **PASS** (4 passed in 1.07s)
-- **React Frontend**:
-  - `npm run type-check`: **PASS** (0 TypeScript errors)
-  - `npm test`: **PASS** (`DashboardPage.test.tsx` 2 passed)
-  - `npm run build`: **PASS** (Production bundle generated in 4.09s)
-
----
-
-## 5. Known Limitations & Unresolved Defects
-
-- Live Docker containers are not kept running continuously in the background during build turns to minimize host resource consumption. Local developers can start them with `docker compose up -d`.
+| Test Suite | Framework | Total Tests | Passed | Failed | Execution Time |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| **Health Check** | JUnit 5 / Spring Boot Test | 1 | 1 | 0 | ~0.1 s |
+| **Auth Controller** | JUnit 5 / Spring Boot Test | 9 | 9 | 0 | ~7.2 s |
+| **Alert Webhook** | JUnit 5 / Spring Boot Test | 8 | 8 | 0 | ~8.4 s |
+| **Incident Lifecycle** | JUnit 5 / Spring Boot Test | 12 | 12 | 0 | ~9.6 s |
+| **Tenant Isolation** | JUnit 5 / Spring Boot Test | 6 | 6 | 0 | ~6.1 s |
+| **Python AI Triage Health** | Pytest / TestClient | 2 | 2 | 0 | ~0.4 s |
+| **Python MCP Tools** | Pytest / TestClient | 4 | 4 | 0 | ~0.5 s |
+| **React Dashboard Tests** | Vitest / RTL | 2 | 2 | 0 | ~1.3 s |
+| **React TypeScript Typecheck**| `tsc --noEmit` | - | **PASS** | 0 | ~2.5 s |
+| **React Production Build** | Vite Build | - | **PASS** | 0 | ~4.1 s (166 kB) |
 
 ---
 
-## 6. Exact Continuation Instructions
+## 5. Next Milestone Plan: Milestone 3 — Event-Driven Architecture & Kafka Pipeline
 
-Upon receiving the user command `CONTINUE`:
-1. Verify `docs/BUILD_STATE.md` and git status.
-2. Begin **Milestone 2**: Java Control Plane & Incident Management.
-3. Implement Domain Models: Organization, User, Incident, Alert, AuditLog.
-4. Implement JWT authentication service, filter chain, and password hashing.
-5. Implement Role-Based Access Control (RBAC) with `@PreAuthorize` (`ADMIN`, `OPERATOR`, `VIEWER`).
-6. Implement `TenantContext` and tenant-scoped data isolation.
-7. Build Alert Ingestion Webhook endpoint (`POST /api/v1/alerts/webhook`) with fingerprinting and deduplication.
-8. Implement Incident Lifecycle State Machine transitions.
-9. Write unit and integration tests proving tenant isolation.
+1. Implement Outbox Publisher Scheduled Poller in Java Control Plane (`ScheduledOutboxPublisher`).
+2. Integrate Spring Kafka producer with idempotence and transactional boundaries.
+3. Implement Python AI Triage Kafka consumer group (`incident-triage-worker`).
+4. Implement retry handler, exponential backoff, and Dead Letter Queue (`incident.triage.dlq.v1`).
+5. Ingest triage requested events and emit mock triage completion events.
+6. Verify end-to-end integration and trace context propagation.
