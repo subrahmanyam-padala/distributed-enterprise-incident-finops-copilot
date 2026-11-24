@@ -1,26 +1,34 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { render, screen, waitFor } from '@testing-library/react'
+import { BrowserRouter } from 'react-router-dom'
 import DashboardPage from '../pages/DashboardPage'
 
 describe('DashboardPage', () => {
-  it('renders the OpsPilot heading', () => {
+  it('renders OpsPilot operational heading and metrics', async () => {
     render(
-      <MemoryRouter>
+      <BrowserRouter>
         <DashboardPage />
-      </MemoryRouter>
+      </BrowserRouter>
     )
+
     expect(screen.getByText('OpsPilot')).toBeInTheDocument()
+    expect(screen.getByText('Incident & FinOps Copilot')).toBeInTheDocument()
+    expect(screen.getByText('Active Incidents')).toBeInTheDocument()
+    expect(screen.getByText('Critical Severity')).toBeInTheDocument()
   })
 
-  it('shows Milestone 1 as complete', () => {
+  it('renders incident list with severity and status badges', async () => {
     render(
-      <MemoryRouter>
+      <BrowserRouter>
         <DashboardPage />
-      </MemoryRouter>
+      </BrowserRouter>
     )
-    expect(
-      screen.getByText(/Milestone 1: Infrastructure & Skeletons/)
-    ).toBeInTheDocument()
+
+    await waitFor(() => {
+      const links = screen.getAllByText(/checkout-service/i)
+      expect(links.length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText(/CRITICAL/i).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText(/INVESTIGATING/i).length).toBeGreaterThanOrEqual(1)
+    })
   })
 })

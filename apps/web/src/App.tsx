@@ -1,13 +1,14 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import DashboardPage from './pages/DashboardPage'
+import { IncidentDetailPage } from './pages/IncidentDetailPage'
 import HealthPage from './pages/HealthPage'
 
 /**
  * Root Application Router.
- * Routes expand per milestone:
- *  - Milestone 1: /dashboard (placeholder) + /health
- *  - Milestone 2: /login, /incidents, /incidents/:id
- *  - Milestone 6: Full operational dashboard
+ * Full operational routes:
+ *  - /dashboard: Operational incident list with status filtering & metrics
+ *  - /incidents/:id: Incident detail with AI Triage report & remediation center
+ *  - /health: Infrastructure & backend services health probe
  */
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/incidents/:id" element={<IncidentDetailPage />} />
         <Route path="/health" element={<HealthPage />} />
       </Routes>
     </BrowserRouter>
