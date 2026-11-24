@@ -1,24 +1,31 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Incident, IncidentStatus } from '../types/incident'
+import { CostAnomaly } from '../types/finops'
 import { ApiClient } from '../services/apiClient'
 import { SeverityBadge, StatusBadge } from '../components/Badges'
+import { FinOpsCard } from '../components/FinOpsCard'
 
 export default function DashboardPage() {
   const [incidents, setIncidents] = useState<Incident[]>([])
+  const [anomalies, setAnomalies] = useState<CostAnomaly[]>([])
   const [statusFilter, setStatusFilter] = useState<IncidentStatus | 'ALL'>('ALL')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchIncidents()
+    fetchData()
   }, [statusFilter])
 
-  const fetchIncidents = async () => {
+  const fetchData = async () => {
     setLoading(true)
     try {
       const filter = statusFilter === 'ALL' ? undefined : statusFilter
-      const res = await ApiClient.getIncidents(filter)
-      setIncidents(res.content)
+      const [incRes, anomRes] = await Promise.all([
+        ApiClient.getIncidents(filter),
+        ApiClient.getCostAnomalies(),
+      ])
+      setIncidents(incRes.content)
+      setAnomalies(anomRes)
     } finally {
       setLoading(false)
     }
@@ -79,6 +86,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* FinOps Cloud Financial Intelligence */}
+        <FinOpsCard anomalies={anomalies} />
+
         {/* Filter and Table Card */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {/* Controls Bar */}
@@ -89,11 +99,10 @@ export default function DashboardPage() {
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
-                  className={`px-3 py-1 text-xs rounded-lg font-medium transition ${
-                    statusFilter === status
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
-                  }`}
+                  className={`px-3 py-1 text-xs rounded-lg font-medium transition ${statusFilter === status
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+                    }`}
                 >
                   {status}
                 </button>
@@ -101,7 +110,7 @@ export default function DashboardPage() {
             </div>
 
             <button
-              onClick={fetchIncidents}
+              onClick={fetchData}
               className="text-xs text-gray-600 hover:text-gray-900 border border-gray-300 bg-white px-3 py-1 rounded-lg shadow-sm"
             >
               ↻ Refresh

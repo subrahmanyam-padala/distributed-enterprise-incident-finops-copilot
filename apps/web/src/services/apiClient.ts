@@ -215,4 +215,57 @@ export class ApiClient {
     const body: ApiResponse<Incident> = await res.json()
     return body.data
   }
+
+  public static async getCostAnomalies(): Promise<import('../types/finops').CostAnomaly[]> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/finops/anomalies`, { headers: this.getHeaders() })
+      if (res.ok) {
+        const body = await res.json()
+        return body.data
+      }
+    } catch {
+      // fallback
+    }
+
+    return [
+      {
+        id: 'anom-chk-001',
+        organizationId: 'org-demo-1',
+        serviceName: 'checkout-service',
+        environment: 'production',
+        detectionDate: '2026-11-24',
+        actualAmount: 685.5,
+        expectedAmount: 129.8,
+        percentageChange: 428.1,
+        zScore: 4.82,
+        severity: 'CRITICAL',
+        correlatedIncidentId: 'inc-chk-001',
+        correlatedDeploymentVersion: 'v2.4.1',
+        status: 'OPEN',
+        explanation:
+          'Spend of $685.50 is 428.1% above 14-day baseline ($129.80, z-score: 4.82). Correlates with incident traffic retry storms on service checkout-service.',
+        detectedAt: new Date().toISOString(),
+      },
+    ]
+  }
+
+  public static async getDailyCosts(days = 14): Promise<import('../types/finops').CloudCostSummary[]> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/finops/costs/daily?days=${days}`, { headers: this.getHeaders() })
+      if (res.ok) {
+        const body = await res.json()
+        return body.data
+      }
+    } catch {
+      // fallback
+    }
+
+    return [
+      { date: '2026-11-20', serviceName: 'checkout-service', provider: 'AWS', amount: 128.5, currency: 'USD' },
+      { date: '2026-11-21', serviceName: 'checkout-service', provider: 'AWS', amount: 134.1, currency: 'USD' },
+      { date: '2026-11-22', serviceName: 'checkout-service', provider: 'AWS', amount: 129.9, currency: 'USD' },
+      { date: '2026-11-23', serviceName: 'checkout-service', provider: 'AWS', amount: 135.2, currency: 'USD' },
+      { date: '2026-11-24', serviceName: 'checkout-service', provider: 'AWS', amount: 685.5, currency: 'USD' },
+    ]
+  }
 }

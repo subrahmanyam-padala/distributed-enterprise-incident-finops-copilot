@@ -1,92 +1,76 @@
-# OpsPilot - Build State & Progress Ledger
+# OpsPilot — BUILD_STATE.md
 
 ## Current Status Summary
+| Milestone | Description | Status |
+|-----------|------------|--------|
+| 1 | Local Infrastructure & Skeletons | ✅ Complete |
+| 2 | Java Control Plane & Incident Management | ✅ Complete |
+| 3 | Event-Driven Architecture & Kafka Pipeline | ✅ Complete |
+| 4 | LangGraph AI Investigation & Hybrid RAG | ✅ Complete |
+| 5 | MCP Operational Telemetry Tools | ✅ Complete |
+| 6 | React Operations Dashboard | ✅ Complete |
+| 7 | FinOps Cloud Financial Intelligence | ✅ Complete |
+| 8 | Distributed Observability, Redis Caching & Rate Limiting | 🔲 Next |
+| 9 | End-to-End Verification, Documentation & Portfolio | 🔲 Pending |
 
-- **Current Milestone**: Milestone 6 — React Operations Dashboard
-- **Status**: Completed (Tests passed: Web 3/3, Python MCP 6/6, Python AI 9/9, Java 38/38)
-- **Next Milestone**: Milestone 7 — FinOps Cloud Financial Intelligence
-- **Last Verified Date**: 2026-11-24
+## Dev Environment Audit
+- **Java**: 21 (Eclipse Temurin) + Spring Boot 3.4.0
+- **Python**: 3.13 + LangGraph 1.2.24 + LangChain 1.5.2 + aiokafka 0.15.0
+- **Node.js**: 22 + React 18 + Vite 6 + Vitest 2 + TailwindCSS 4
+- **Docker Compose**: PostgreSQL 16 (pgvector), Kafka KRaft, Redis 7
+- **Build**: Maven Wrapper (Java), pip (Python), npm (Node)
 
----
+## Implemented Functionality — Milestone 7: FinOps Cloud Financial Intelligence
 
-## 1. Development Environment Audit
+### Backend (Java Spring Boot)
+- **Flyway migration V2**: `cloud_cost_items` and `cost_anomalies` database tables
+- **Domain entities**: `CloudCostItem`, `CostAnomaly` with JPA annotations
+- **Repositories**: Spring Data JPA repos with JPQL date-range queries
+- **FinOpsService**: Deterministic z-score anomaly detection (mean + standard deviation) over configurable lookback window; zero LLM arithmetic
+- **FinOpsController**: REST endpoints — `GET /anomalies`, `GET /costs/daily`, `POST /anomalies/detect`, `POST /seed`
+- **Integration test**: `FinOpsControllerTest` verifying anomaly detection pipeline end-to-end
 
-| Tool | Detected Version | Target Specification | Status | Notes |
-| :--- | :--- | :--- | :---: | :--- |
-| **Operating System** | Windows (PowerShell) | Windows / Linux / macOS | OK | Native workspace |
-| **Java JDK** | OpenJDK 21.0.10 LTS (Temurin) | Java 21 LTS | **PASS** | Verified with Spring Boot 3.4.0 |
-| **Maven** | Apache Maven 3.9.9 | Maven 3.9+ / `mvnw` wrapper | **PASS** | Installed and verified via `mvnw.cmd` |
-| **Python** | 3.13.0 | Python 3.11+ | **PASS** | LangGraph, FastApi, Pydantic, aiokafka verified |
-| **Node.js** | v22.20.0 | Node 20+ LTS | **PASS** | Vite, React 18, Vitest verified |
-| **npm** | 10.9.3 | npm 10+ | **PASS** | 408 packages installed cleanly |
-| **Docker Engine** | 29.7.2 | Docker Engine 24+ | **PASS** | Docker Compose configured |
-| **Git** | 2.47.1.windows.2 | Git 2.40+ | **PASS** | Configured: `subrahmanyam-padala` / `subbhu35@gmail.com` |
+### Frontend (React + TypeScript)
+- **TypeScript types**: `CostAnomaly`, `CloudCostSummary` interfaces
+- **FinOpsCard component**: Statistical anomaly card with z-score, percentage spike, incident correlation links, deployment version tags
+- **Dashboard integration**: FinOps card between KPI metrics and incident table, parallel fetch with `Promise.all`
+- **API client**: `getCostAnomalies()` and `getDailyCosts()` with mock fallbacks for standalone dev
 
----
+### Sample Data
+- `sample-data/finops/sample-cloud-costs.csv`: 30-row billing dataset across 5 services
 
-## 2. Implemented Functionality (Milestone 6)
+## Files Created/Modified (Milestone 7)
+```
+services/control-plane/src/main/resources/db/migration/V2__finops_schema.sql
+services/control-plane/src/main/java/com/opspilot/controlplane/domain/entity/CloudCostItem.java
+services/control-plane/src/main/java/com/opspilot/controlplane/domain/entity/CostAnomaly.java
+services/control-plane/src/main/java/com/opspilot/controlplane/repository/CloudCostItemRepository.java
+services/control-plane/src/main/java/com/opspilot/controlplane/repository/CostAnomalyRepository.java
+services/control-plane/src/main/java/com/opspilot/controlplane/dto/finops/CostAnomalyResponse.java
+services/control-plane/src/main/java/com/opspilot/controlplane/dto/finops/CloudCostSummary.java
+services/control-plane/src/main/java/com/opspilot/controlplane/service/FinOpsService.java
+services/control-plane/src/main/java/com/opspilot/controlplane/controller/FinOpsController.java
+services/control-plane/src/test/java/com/opspilot/controlplane/finops/FinOpsControllerTest.java
+sample-data/finops/sample-cloud-costs.csv
+apps/web/src/types/finops.ts
+apps/web/src/components/FinOpsCard.tsx
+apps/web/src/services/apiClient.ts (modified)
+apps/web/src/pages/DashboardPage.tsx (modified)
+```
 
-1. **Operations Dashboard (`DashboardPage`)**:
-   - High-density operational header displaying current tenant context and navigation links.
-   - Real-time KPI summary metric cards (Active Incidents, Critical Severity, Resolved Today, AI Triage Automation %).
-   - Incident filter buttons (`ALL`, `OPEN`, `INVESTIGATING`, `IDENTIFIED`, `MONITORING`, `RESOLVED`).
-   - Incident Table with severity badges (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO`), status badges, alert count counters, and direct triage drill-down links.
-2. **Interactive Incident Detail View (`IncidentDetailPage`)**:
-   - Comprehensive incident header with service name, environment, timestamp metadata, and alert aggregation count.
-   - Action controls: "Acknowledge Incident" and "Resolve Incident" modal with post-mortem resolution audit notes.
-3. **AI Autonomous Triage & Remediation Card (`TriageReportCard`)**:
-   - Investigation telemetry header displaying Triage ID, investigation duration (ms), and percentage confidence score.
-   - Validated observations list.
-   - Hypotheses with likelihood ratings (`HIGH`, `MEDIUM`, `LOW`) and reasoning.
-   - Operational evidence grid displaying live MCP health metrics and deployment releases.
-   - Markdown runbook citations with relevance scores and excerpted snippets.
-   - **Remediation Action Center with Human-in-the-Loop Sign-Off**:
-     Interactive action buttons ("Approve & Sign", "Reject") explicitly guaranteeing human oversight prior to any remediation execution.
-4. **API Integration & Type System (`apiClient.ts` & `incident.ts`)**:
-   - Strongly typed TypeScript models matching the backend contracts.
-   - Robust `ApiClient` with Bearer token authentication, paged queries, and graceful fallbacks for standalone demonstration.
-5. **Quality Assurance & Verification**:
-   - `npm test`: 3 component and routing tests passed (100%).
-   - `npm run type-check`: Zero TypeScript compile warnings or errors.
-   - `npm run build`: Production bundle built cleanly (191 kB JS / 21 kB CSS).
+## Test Results
+| Suite | Tests | Result |
+|-------|-------|--------|
+| Java Control Plane (mvnw test) | 39 | ✅ All pass |
+| Python AI Triage (pytest) | 8 | ✅ All pass |
+| Python MCP Server (pytest) | 7 | ✅ All pass |
+| React Frontend (vitest) | 3 | ✅ All pass |
+| TypeScript type-check (tsc --noEmit) | — | ✅ Clean |
+| Vite production build | — | ✅ Success (195.85 KB JS gzip 61.53 KB) |
 
----
-
-## 3. Files Created or Modified (Milestone 6)
-
-- `apps/web/src/types/incident.ts`
-- `apps/web/src/services/apiClient.ts`
-- `apps/web/src/components/Badges.tsx`
-- `apps/web/src/components/TriageReportCard.tsx`
-- `apps/web/src/pages/DashboardPage.tsx`
-- `apps/web/src/pages/IncidentDetailPage.tsx`
-- `apps/web/src/App.tsx`
-- `apps/web/src/test/DashboardPage.test.tsx`
-- `apps/web/src/test/IncidentDetailPage.test.tsx`
-- `docs/BUILD_STATE.md`
-
----
-
-## 4. Verification & Test Execution Results
-
-| Test Suite | Framework | Total Tests | Passed | Failed | Status |
-| :--- | :--- | :---: | :---: | :---: | :---: |
-| **React Web Dashboard** | Vitest / RTL | 3 | 3 | 0 | **PASS (5.54s)** |
-| - *Dashboard Metrics & Layout* | RTL | 1 | 1 | 0 | **PASS** |
-| - *Incident Table & Badges* | RTL | 1 | 1 | 0 | **PASS** |
-| - *Incident Detail & AI Card* | RTL | 1 | 1 | 0 | **PASS** |
-| **TypeScript Typecheck** | `tsc --noEmit` | - | **PASS** | 0 | **PASS** |
-| **Vite Production Build** | Vite Build | - | **PASS** | 0 | **PASS (191 kB)** |
-| **Python MCP Server** | Pytest / TestClient | 6 | 6 | 0 | **PASS (0.65s)** |
-| **Python AI Triage Engine** | Pytest | 9 | 9 | 0 | **PASS (29.29s)** |
-| **Java Control Plane** | JUnit 5 / Spring Boot Test | 38 | 38 | 0 | **PASS** |
-
----
-
-## 5. Next Milestone Plan: Milestone 7 — FinOps Cloud Financial Intelligence
-
-1. Implement FinOps domain models: cloud cost line items, provider attribution (AWS, GCP, Azure), service tags, and daily spend aggregates.
-2. Implement deterministic Statistical Anomaly Detection algorithm (z-score / moving average standard deviation) for cloud spend spikes without relying on LLM arithmetic.
-3. Implement Incident & Deployment Cost Correlation: link sudden cost surges with specific deployment releases and active incidents.
-4. Expose FinOps REST API endpoints in Java Control Plane (`/api/v1/finops/anomalies`, `/api/v1/finops/costs`).
-5. Build FinOps dashboard panel in React web application.
+## Next Milestone Plan — M8: Distributed Observability, Redis Caching & Rate Limiting
+1. OpenTelemetry trace correlation IDs and structured logging (Java + Python)
+2. Redis caching layer for incident lookups and health checks
+3. API rate limiting middleware
+4. Performance and resilience tests
+5. BUILD_STATE.md update and Git commit
