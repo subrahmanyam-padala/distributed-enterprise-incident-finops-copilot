@@ -14,12 +14,13 @@ describe('IncidentDetailPage', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText(/checkout-service/i)).toBeInTheDocument()
+      const serviceMatches = screen.getAllByText(/checkout-service/i)
+      expect(serviceMatches.length).toBeGreaterThanOrEqual(1)
       expect(screen.getByText(/LangGraph AI Autonomous Investigation/i)).toBeInTheDocument()
       expect(screen.getByText(/88%/i)).toBeInTheDocument()
       expect(screen.getByText(/Remediation Action Center/i)).toBeInTheDocument()
       expect(screen.getByText(/Scale checkout-service pod replicas/i)).toBeInTheDocument()
-      expect(screen.getByText(/Approve & Sign/i)).toBeInTheDocument()
+      expect(screen.getAllByText(/Approve & Sign/i).length).toBeGreaterThanOrEqual(1)
     })
   })
 })

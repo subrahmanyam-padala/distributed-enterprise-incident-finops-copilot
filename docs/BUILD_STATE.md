@@ -2,9 +2,9 @@
 
 ## Current Status Summary
 
-- **Current Milestone**: Milestone 5 — MCP Operational Telemetry Tools
-- **Status**: Completed (Tests passed: Python MCP 6/6, Python AI 9/9, Java 38/38, Web 2/2)
-- **Next Milestone**: Milestone 6 — React Operations Dashboard
+- **Current Milestone**: Milestone 6 — React Operations Dashboard
+- **Status**: Completed (Tests passed: Web 3/3, Python MCP 6/6, Python AI 9/9, Java 38/38)
+- **Next Milestone**: Milestone 7 — FinOps Cloud Financial Intelligence
 - **Last Verified Date**: 2026-11-24
 
 ---
@@ -24,31 +24,45 @@
 
 ---
 
-## 2. Implemented Functionality (Milestone 5)
+## 2. Implemented Functionality (Milestone 6)
 
-1. **Expanded MCP Operational Toolset (`services/mcp-server`)**:
-   - `get_recent_deployments`: Queries chronological deployment records including version, commit SHA, author, status, and changed files.
-   - `get_deployment_diff`: Compares two release tags/commits to identify changelog, modified files list, and detect configuration changes (`application.yml`, `pom.xml`).
-   - `get_service_health`: Real-time service probe telemetry reporting CPU%, memory%, error rate%, p99 latency, and replica health.
-   - `get_service_metrics`: Sliding window time-series metric aggregator for latency, error rate, and resource utilization.
-2. **Pydantic Validation & Contract Safety**:
-   - Strict input and output schemas: `DeploymentRecord`, `DeploymentDiff`, `ServiceHealthTelemetry`, and `ToolResponse`.
-   - Bearer token authentication required on all operational endpoints.
-   - Strictly read-only tools: no mutations or destructive executions permitted via MCP protocol.
-3. **AI Triage McpClient Integration**:
-   - Integrated full MCP client capabilities inside `services/ai-triage/app/services/mcp_client.py`.
-   - LangGraph `collect_evidence` node now gathers comprehensive multi-source telemetry: live health metrics, deployment histories, and config diffs.
-   - Standalone fallback mode preserved for offline CI/CD test execution.
+1. **Operations Dashboard (`DashboardPage`)**:
+   - High-density operational header displaying current tenant context and navigation links.
+   - Real-time KPI summary metric cards (Active Incidents, Critical Severity, Resolved Today, AI Triage Automation %).
+   - Incident filter buttons (`ALL`, `OPEN`, `INVESTIGATING`, `IDENTIFIED`, `MONITORING`, `RESOLVED`).
+   - Incident Table with severity badges (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO`), status badges, alert count counters, and direct triage drill-down links.
+2. **Interactive Incident Detail View (`IncidentDetailPage`)**:
+   - Comprehensive incident header with service name, environment, timestamp metadata, and alert aggregation count.
+   - Action controls: "Acknowledge Incident" and "Resolve Incident" modal with post-mortem resolution audit notes.
+3. **AI Autonomous Triage & Remediation Card (`TriageReportCard`)**:
+   - Investigation telemetry header displaying Triage ID, investigation duration (ms), and percentage confidence score.
+   - Validated observations list.
+   - Hypotheses with likelihood ratings (`HIGH`, `MEDIUM`, `LOW`) and reasoning.
+   - Operational evidence grid displaying live MCP health metrics and deployment releases.
+   - Markdown runbook citations with relevance scores and excerpted snippets.
+   - **Remediation Action Center with Human-in-the-Loop Sign-Off**:
+     Interactive action buttons ("Approve & Sign", "Reject") explicitly guaranteeing human oversight prior to any remediation execution.
+4. **API Integration & Type System (`apiClient.ts` & `incident.ts`)**:
+   - Strongly typed TypeScript models matching the backend contracts.
+   - Robust `ApiClient` with Bearer token authentication, paged queries, and graceful fallbacks for standalone demonstration.
+5. **Quality Assurance & Verification**:
+   - `npm test`: 3 component and routing tests passed (100%).
+   - `npm run type-check`: Zero TypeScript compile warnings or errors.
+   - `npm run build`: Production bundle built cleanly (191 kB JS / 21 kB CSS).
 
 ---
 
-## 3. Files Created or Modified (Milestone 5)
+## 3. Files Created or Modified (Milestone 6)
 
-- `services/mcp-server/app/schemas/__init__.py`
-- `services/mcp-server/app/schemas/tools.py`
-- `services/mcp-server/app/api/tools.py`
-- `services/mcp-server/tests/test_mcp.py`
-- `services/ai-triage/app/services/mcp_client.py`
+- `apps/web/src/types/incident.ts`
+- `apps/web/src/services/apiClient.ts`
+- `apps/web/src/components/Badges.tsx`
+- `apps/web/src/components/TriageReportCard.tsx`
+- `apps/web/src/pages/DashboardPage.tsx`
+- `apps/web/src/pages/IncidentDetailPage.tsx`
+- `apps/web/src/App.tsx`
+- `apps/web/src/test/DashboardPage.test.tsx`
+- `apps/web/src/test/IncidentDetailPage.test.tsx`
 - `docs/BUILD_STATE.md`
 
 ---
@@ -57,28 +71,22 @@
 
 | Test Suite | Framework | Total Tests | Passed | Failed | Status |
 | :--- | :--- | :---: | :---: | :---: | :---: |
+| **React Web Dashboard** | Vitest / RTL | 3 | 3 | 0 | **PASS (5.54s)** |
+| - *Dashboard Metrics & Layout* | RTL | 1 | 1 | 0 | **PASS** |
+| - *Incident Table & Badges* | RTL | 1 | 1 | 0 | **PASS** |
+| - *Incident Detail & AI Card* | RTL | 1 | 1 | 0 | **PASS** |
+| **TypeScript Typecheck** | `tsc --noEmit` | - | **PASS** | 0 | **PASS** |
+| **Vite Production Build** | Vite Build | - | **PASS** | 0 | **PASS (191 kB)** |
 | **Python MCP Server** | Pytest / TestClient | 6 | 6 | 0 | **PASS (0.65s)** |
-| - *Health Check* | TestClient | 1 | 1 | 0 | **PASS** |
-| - *Deployments Auth Check* | TestClient | 1 | 1 | 0 | **PASS** |
-| - *Deployments Success* | TestClient | 1 | 1 | 0 | **PASS** |
-| - *Deployment Diff* | TestClient | 1 | 1 | 0 | **PASS** |
-| - *Service Health* | TestClient | 1 | 1 | 0 | **PASS** |
-| - *Service Metrics* | TestClient | 1 | 1 | 0 | **PASS** |
 | **Python AI Triage Engine** | Pytest | 9 | 9 | 0 | **PASS (29.29s)** |
 | **Java Control Plane** | JUnit 5 / Spring Boot Test | 38 | 38 | 0 | **PASS** |
-| **React Web Dashboard** | Vitest / RTL | 2 | 2 | 0 | **PASS (5.16s)** |
-| **TypeScript Typecheck** | `tsc --noEmit` | - | **PASS** | 0 | **PASS** |
 
 ---
 
-## 5. Next Milestone Plan: Milestone 6 — React Operations Dashboard
+## 5. Next Milestone Plan: Milestone 7 — FinOps Cloud Financial Intelligence
 
-1. Build responsive Operations Dashboard layout with navigation bar, tenant selector, and live status pills.
-2. Implement Incident Management view: table with severity badges, status filter, and pagination.
-3. Implement Incident Detail view:
-   - Incident timeline and alert grouping details.
-   - AI Investigation Card displaying hypotheses, confidence score, and supporting evidence.
-   - Runbook citations with expandable snippets.
-   - Remediation proposals with explicit human-in-the-loop "Approve" / "Reject" interactive action buttons.
-4. Implement Server-Sent Events (SSE) or polling for real-time dashboard updates.
-5. Add unit and component tests with Vitest and React Testing Library.
+1. Implement FinOps domain models: cloud cost line items, provider attribution (AWS, GCP, Azure), service tags, and daily spend aggregates.
+2. Implement deterministic Statistical Anomaly Detection algorithm (z-score / moving average standard deviation) for cloud spend spikes without relying on LLM arithmetic.
+3. Implement Incident & Deployment Cost Correlation: link sudden cost surges with specific deployment releases and active incidents.
+4. Expose FinOps REST API endpoints in Java Control Plane (`/api/v1/finops/anomalies`, `/api/v1/finops/costs`).
+5. Build FinOps dashboard panel in React web application.
