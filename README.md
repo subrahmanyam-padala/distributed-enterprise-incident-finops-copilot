@@ -1,5 +1,6 @@
 # OpsPilot — Distributed Enterprise Incident & FinOps Copilot
 
+[![OpsPilot CI](https://github.com/subrahmanyam-padala/distributed-enterprise-incident-finops-copilot/actions/workflows/ci.yml/badge.svg)](https://github.com/subrahmanyam-padala/distributed-enterprise-incident-finops-copilot/actions/workflows/ci.yml)
 [![Java 21](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.org/projects/jdk/21/)
 [![Spring Boot 3.4.0](https://img.shields.io/badge/Spring_Boot-3.4.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Python 3.13](https://img.shields.io/badge/Python-3.13-blue.svg)](https://www.python.org/)
@@ -135,6 +136,24 @@ cd services/mcp-server && pytest
 
 # React Operations Dashboard (3 tests + TypeScript type-check)
 cd apps/web && npm test -- --run && npm run type-check
+```
+
+---
+
+## 📁 Repository Structure
+
+```text
+distributed-enterprise-incident-finops-copilot/
+├── .github/workflows/ci.yml      # Multi-service GitHub Actions CI pipeline
+├── apps/web/                     # React 18 + TypeScript + Vite operations dashboard
+├── services/
+│   ├── control-plane/            # Java 21 Spring Boot REST API, FinOps & Outbox
+│   ├── ai-triage/                # Python 3.13 LangGraph & Hybrid RAG investigation engine
+│   └── mcp-server/               # FastAPI read-only operational telemetry MCP server
+├── scripts/verify_system.py      # End-to-end multi-service smoke verification script
+├── sample-data/                  # Sample runbooks & FinOps cloud billing CSVs
+├── docs/ARCHITECTURE.md          # System architecture & sequence diagrams
+└── docker-compose.yml            # PostgreSQL 16 (pgvector), Kafka KRaft, Redis 7
 ```
 
 ---
