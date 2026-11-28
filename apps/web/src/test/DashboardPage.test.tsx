@@ -31,4 +31,18 @@ describe('DashboardPage', () => {
       expect(screen.getAllByText(/INVESTIGATING/i).length).toBeGreaterThanOrEqual(1)
     })
   })
+
+  it('renders FinOps cloud cost anomaly card with z-score and spike', async () => {
+    render(
+      <BrowserRouter>
+        <DashboardPage />
+      </BrowserRouter>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('FinOps Cloud Financial Intelligence')).toBeInTheDocument()
+      expect(screen.getAllByText(/z-score:\s*4\.82/i).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByText(/\+428% Spike/i)).toBeInTheDocument()
+    })
+  })
 })
