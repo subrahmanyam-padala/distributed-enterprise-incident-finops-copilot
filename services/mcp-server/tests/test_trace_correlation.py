@@ -16,3 +16,10 @@ def test_trace_correlation_propagated():
     assert response.status_code == 200
     assert response.headers.get("x-correlation-id") == custom_id
 
+def test_trace_correlation_extracts_w3c_traceparent():
+    trace_id = "4bf92f3577b34da6a3ce929d0e0e4736"
+    traceparent = f"00-{trace_id}-00f067aa0ba902b7-01"
+    response = client.get("/api/v1/health", headers={"traceparent": traceparent})
+    assert response.status_code == 200
+    assert response.headers.get("x-correlation-id") == trace_id
+
